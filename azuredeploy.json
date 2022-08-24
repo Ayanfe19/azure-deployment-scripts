@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "identity": {
+      "type": "string",
+      "defaultValue": "/subscriptions/7952fd48-fefa-46b0-b29f-8b6300eb6061/resourcegroups/cbt-app/providers/Microsoft.ManagedIdentity/userAssignedIdentities/cbtest-mi"
+    },
+    "utcValue": {
+      "type": "string",
+      "defaultValue": "[utcNow()]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deploymentScripts",
+      "apiVersion": "2020-10-01",
+      "name": "runBashWithOutputs",
+      "location": "[resourceGroup().location]",
+      "kind": "AzureCLI",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[parameters('identity')]": {
+          }
+        }
+      },
+      "properties": {
+        "forceUpdateTag": "[parameters('utcValue')]",
+        "AzCliVersion": "2.15.0",
+        "timeout": "PT30M",
+        "arguments": "'foo' 'bar'",
+        "environmentVariables": [
+          {
+            "name": "UserName",
+            "value": "jdole"
+          },
+          {
+            "name": "Password",
+            "secureValue": "jDolePassword"
+          }
+        ],
+        "scriptContent": "
+            clientid=$(az ad app create --displayname test1 --query appId --output tsv)
+            objectid=$(az ad app show --id $clientid --query objectId --output tsv)
+            clientsecretname=secret1
+            clientsecretduration=2
+            clientsecret=$(az ad app credential reset --id $clientid --append --years $clientsecretduration --query password --output tsv)
+            echo $clientsecret > $AZ_SCRIPTS_OUTPUT_PATH",
+        "cleanupPreference": "OnSuccess",
+        "retentionInterval": "P1D"
+      }
+    }]
+}
